@@ -26,6 +26,7 @@ services:
       - ./storage/pi:/app/data/profile_images
       - ./storage/fi:/app/data/funding_image
       - ./storage/pd:/app/data/project_document
+      - ./storage/si:/app/data/story_image
       - ./.env:/app/src/resources/.env
 
   db:
