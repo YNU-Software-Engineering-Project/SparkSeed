@@ -19,8 +19,8 @@ jobs:
 
       - name: Test SSH connection
         run: |
-          ssh -v -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUB_IP }} "echo 'SSH Connection Successful!'"
+          ssh -v -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUB_IP }} "echo 'SSH Connection Successful!'"
 
       - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_PUB_IP }} "bash update.sh"
+          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUB_IP }} "bash update.sh"
