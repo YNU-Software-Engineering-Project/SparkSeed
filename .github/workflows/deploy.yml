@@ -6,21 +6,16 @@ on:
       - main
 
 jobs:
-  deploy:
+  SSH:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.5.3
+      - uses: actions/checkout@v3
+      - name: ssh to ec2
+        uses: appleboy/ssh-action@master
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
-
-      - name: Verify SSH key
-        run: ssh-add -l
-
-      - name: Test SSH connection
-        run: |
-          ssh -v -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUB_IP }} "echo 'SSH Connection Successful!'"
-
-      - name: Deploy to EC2
-        run: |
-          ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_PUB_IP }} "bash update.sh"
+          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.EC2_PUB_IP }}
+          username: ${{ secrets.EC2_USER }}
+          script: | 
+            bash update.sh
