@@ -21,7 +21,7 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --parameters '{"commands":["sudo -u ${{ secrets.EC2_USER }}r -i bash -c \"cd '${{ secrets.EC2_PROJECT_DIR }}' && bash script.sh\""]}' \
+            --parameters '{"commands":["sudo -u ${{ secrets.EC2_USER }} -i bash -c \"cd '${{ secrets.EC2_PROJECT_DIR }}' && bash script.sh\""]}' \
             --comment "Run script.sh" \
             --query "Command.CommandId" \
             --output text)
