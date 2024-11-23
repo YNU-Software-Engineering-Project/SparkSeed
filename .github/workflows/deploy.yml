@@ -64,8 +64,11 @@ jobs:
           echo "Standard Error:"
           echo "$ERROR_OUTPUT"
 
-          if [ "$ERROR_OUTPUT" != "None" ]; then
+          if [[ "$ERROR_OUTPUT" != "None" && -n "$ERROR_OUTPUT" ]]; then
             echo "Error detected:"
             echo "$ERROR_OUTPUT"
             exit 1
+          else
+            echo "No critical errors detected. Workflow succeeded."
+            exit 0
           fi
