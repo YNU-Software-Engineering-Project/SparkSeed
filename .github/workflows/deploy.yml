@@ -18,11 +18,10 @@ jobs:
       - name: Run script on EC2 using SSM
         id: run_command
         run: |
-          # Send the command to EC2
           COMMAND_ID=$(aws ssm send-command \
             --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["bash script.sh"]' \
+            --parameters 'commands=["cd ${{ secrets.EC2_PROJECT_DIR }} && bash script.sh"]' \
             --comment "Run script.sh" \
             --query "Command.CommandId" \
             --output text)
@@ -33,13 +32,13 @@ jobs:
         run: |
           aws ssm wait command-executed \
             --command-id ${{ env.COMMAND_ID }} \
-            --instance-id i-1234567890abcdef0
+            --instance-id ${{ secrets.EC2_INSTANCE_ID }}
 
       - name: Fetch command output
         run: |
           OUTPUT=$(aws ssm get-command-invocation \
             --command-id ${{ env.COMMAND_ID }} \
-            --instance-id i-1234567890abcdef0 \
+            --instance-id ${{ secrets.EC2_INSTANCE_ID }} \
             --query "StandardOutputContent" \
             --output text)
 
@@ -48,7 +47,7 @@ jobs:
 
           ERROR_OUTPUT=$(aws ssm get-command-invocation \
             --command-id ${{ env.COMMAND_ID }} \
-            --instance-id i-1234567890abcdef0 \
+            --instance-id ${{ secrets.EC2_INSTANCE_ID }} \
             --query "StandardErrorContent" \
             --output text)
           if [ "$ERROR_OUTPUT" != "None" ]; then
