@@ -1,4 +1,4 @@
-name: Deploy to EC2 using AWS CLI
+name: Deploy to EC2
 
 on:
   push:
@@ -9,17 +9,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Configure AWS CLI
+      - name: Deploy to EC2
         run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region ${{ secrets.EC2_REGION }}
-
-      - name: Execute Script on EC2
-        run: |
-          aws ssm send-command \
-            --targets "Key=instanceIds,Values=<EC2_INSTANCE_ID>" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Running update.sh" \
-            --parameters 'commands=["bash script.sh"]' \
-            --output text
+          echo "${{ secrets.EC2_SSH_KEY }}" > ec2_key.pem
+          chmod 400 ec2_key.pem
+          ssh -i ec2_key.pem -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_PUB_IP }} "bash script.sh"
