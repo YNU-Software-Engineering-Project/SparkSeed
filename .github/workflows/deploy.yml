@@ -18,7 +18,7 @@ jobs:
       - name: Run script on EC2 using SSM
         run: |
           aws ssm send-command \
-            --targets "Key=instanceIds,Values=<EC2_INSTANCE_ID>" \
+            --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy application" \
             --parameters 'commands=["bash script.sh"]' \
