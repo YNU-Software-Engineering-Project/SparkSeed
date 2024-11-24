@@ -17,6 +17,12 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws configure set region ${{ secrets.EC2_REGION }}
 
+      # 환경 변수 설정
+      - name: Set Environment Variables
+        run: |
+          echo "USER_NAME=${{ secrets.USER_NAME }}" >> $GITHUB_ENV
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+
       # 2. 리포지토리 및 서브모듈 체크아웃
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -62,6 +68,8 @@ jobs:
             --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters '{"commands":[
+              "export USER_NAME=${{ secrets.USER_NAME }}",
+              "export GITHUB_TOKEN=${{ secrets.TOKEN }}",
               "cd '${{ secrets.EC2_PROJECT_DIR }}'",
               "bash script.sh"
             ]}' \
