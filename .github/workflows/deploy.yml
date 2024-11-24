@@ -21,6 +21,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
+          token: ${{ secrets.TOKEN }}
           submodules: recursive
 
       # 3. Node.js 환경 설정 및 React 빌드
