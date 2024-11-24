@@ -28,40 +28,39 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 14
+      - name: Install and Build
         run: |
           cd frontend
           npm install
           npm run build
           tar -czf build.tar.gz build
 
-      # 4. EC2로 파일 업로드 (SSM을 사용한 직접 업로드)
+      # 4. 빌드 파일을 EC2로 업로드
       - name: Upload Build to EC2
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_PUB_IP }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > /tmp/ssh_key.pem
+          chmod 400 /tmp/ssh_key.pem
+          scp -o StrictHostKeyChecking=no -i /tmp/ssh_key.pem frontend/build.tar.gz $EC2_USER@$EC2_HOST:/tmp/
+          rm -f /tmp/ssh_key
+
+      # 5. EC2에서 스크립트 실행
+      - name: Execute Deployment Script on EC2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |
-          aws ssm send-command \
-            --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
-            --document-name "AWS-RunShellScript" \
-            --parameters '{"commands":[
-              "mkdir -p /tmp/build",
-              "cat > /tmp/build/build.tar.gz"
-            ]}' \
-            --comment "Uploading React build archive" \
-            --output text <<< "$(cat frontend/build.tar.gz | base64 | tr -d '\n')"
-
-      # 5. SSM을 통해 EC2에서 파일 압축 해제 및 스크립트 실행
-      - name: Deploy via SSM
         run: |
           COMMAND_ID=$(aws ssm send-command \
             --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters '{"commands":[
-              "cd /tmp/build",
-              "tar -xzf build.tar.gz -C /var/www/html",
-              "cd /home/ec2-user/project",
+              "cd '${{ secrets.EC2_PROJECT_DIR }}'",
               "bash script.sh"
             ]}' \
+            --comment "Deploy services and frontend" \
             --query "Command.CommandId" \
             --output text)
           echo "COMMAND_ID=$COMMAND_ID" >> $GITHUB_ENV
@@ -87,3 +86,4 @@ jobs:
           else
             echo "Command succeeded with status: $STATUS"
           fi
+
