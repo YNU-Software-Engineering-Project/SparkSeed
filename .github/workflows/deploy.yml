@@ -1,4 +1,4 @@
-name: Deploy React App and Services to EC2 using AWS SSM
+name: Deploy Services to EC2 using AWS SSM
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -23,53 +23,7 @@ jobs:
           echo "USER_NAME=${{ secrets.USER_NAME }}" >> $GITHUB_ENV
           echo "GITHUB_TOKEN=${{ secrets.TOKEN }}" >> $GITHUB_ENV
 
-      # 3. 리포지토리 및 서브모듈 체크아웃
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.TOKEN }}
-          submodules: recursive
-
-      # 4. React 빌드 및 압축
-      - name: Build React App
-        uses: actions/setup-node@v3
-        with:
-          node-version: 14
-      - name: Install and Build
-        run: |
-          cd frontend
-          npm install
-          npm run build
-
-      - name: Split and Compress Build Output
-        run: |
-          if [ ! -d "frontend/build" ]; then
-            echo "Build directory does not exist. Build failed."
-            exit 1
-          fi
-          tar -czf frontend/build.tar.gz -C frontend build
-          split -b 10M frontend/build.tar.gz frontend/build.tar.gz.part_
-
-      # 5. 분할 파일을 EC2로 전송
-      - name: Upload Split Files to EC2 via SSM
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |
-          INDEX=0
-          for file in frontend/build.tar.gz.part_*; do
-            FILE_CONTENT=$(base64 $file | tr -d '\n')
-            aws ssm send-command \
-              --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
-              --document-name "AWS-RunShellScript" \
-              --parameters '{"commands":[
-                "echo $FILE_CONTENT | base64 -d > /tmp/build.tar.gz.part_$INDEX"
-              ]}' \
-              --comment "Uploading $file to EC2 via SSM"
-            INDEX=$((INDEX + 1))
-          done
-
-      # 6. EC2에서 병합 및 스크립트 실행
+      # 3. 스크립트 실행
       - name: Execute Deployment Script on EC2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -79,21 +33,17 @@ jobs:
             --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters '{"commands":[
-              "cd /tmp",
-              "cat build.tar.gz.part_* > build.tar.gz",
-              "gzip -t build.tar.gz || (echo Build file corrupted && exit 1)",
-              "rm -f build.tar.gz.part_*",
               "export USER_NAME=${{ secrets.USER_NAME }}",
               "export TOKEN=${{ secrets.TOKEN }}",
               "cd '${{ secrets.EC2_PROJECT_DIR }}'",
               "bash script.sh"
             ]}' \
-            --comment "Deploy services and frontend" \
+            --comment "Deploy services" \
             --query "Command.CommandId" \
             --output text)
           echo "COMMAND_ID=$COMMAND_ID" >> $GITHUB_ENV
 
-      # 7. 명령 상태 확인
+      # 4. 명령 상태 확인
       - name: Wait for command to finish
         run: |
           STATUS="InProgress"
