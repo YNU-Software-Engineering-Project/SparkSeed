@@ -1,12 +1,12 @@
 [submodule "backend"]
 	path = backend
-	url = git@github.com:YNU-Software-Engineering-Project/backend-spring.git
+	url = https://github.com/YNU-Software-Engineering-Project/backend-spring.git 
 	branch = main
 [submodule "frontend"]
 	path = frontend
-	url = git@github.com:YNU-Software-Engineering-Project/frontend-react.git
+	url = https://github.com/YNU-Software-Engineering-Project/frontend-react.git
 	branch = main
 [submodule "db"]
 	path = db
-	url = git@github.com:YNU-Software-Engineering-Project/database-db.git
+	url = https://github.com/YNU-Software-Engineering-Project/database-db.git
 	branch = main
