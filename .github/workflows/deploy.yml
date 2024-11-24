@@ -1,4 +1,4 @@
-name: Deploy to EC2 using AWS SSM
+name: Deploy React App and Services to EC2 using AWS SSM
 
 on:
   push:
@@ -6,27 +6,52 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS CLI
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws configure set region ${{ secrets.EC2_REGION }}
 
-      - name: Run script on EC2 using SSM
-        id: run_command
+    steps:
+      # 1. 리포지토리 체크아웃
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2. Node.js 환경 설정 및 React 빌드
+      - name: Build React App
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14
+        run: |
+          cd frontend
+          npm install
+          npm run build
+          tar -czf build.tar.gz build
+
+      # 3. 빌드된 결과물을 EC2로 업로드
+      - name: Upload Build to EC2
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_PUBLIC_IP }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          scp -o StrictHostKeyChecking=no -i <(echo "$SSH_PRIVATE_KEY") frontend/build.tar.gz $EC2_USER@$EC2_HOST:/tmp/
+
+      # 4. EC2에서 스크립트 실행
+      - name: Deploy to EC2 using SSM
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           COMMAND_ID=$(aws ssm send-command \
             --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
-            --parameters '{"commands":["sudo -u ${{ secrets.EC2_USER }} -i bash -c \"cd '${{ secrets.EC2_PROJECT_DIR }}' && bash script.sh\""]}' \
-            --comment "Run script.sh" \
+            --parameters '{"commands":[
+              "sudo -u ${{ secrets.EC2_USER }} -i bash -c \"cd '${{ secrets.EC2_PROJECT_DIR }}' && bash script.sh\""
+            ]}' \
+            --comment "Deploy services and frontend" \
             --query "Command.CommandId" \
             --output text)
           echo "COMMAND_ID=$COMMAND_ID" >> $GITHUB_ENV
 
+      # 5. 명령 상태 확인
       - name: Wait for command to finish
         run: |
           STATUS="InProgress"
